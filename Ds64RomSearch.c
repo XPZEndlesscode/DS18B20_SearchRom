@@ -32,7 +32,7 @@ int16_t DS_FindAnUnusedGuid(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
 	}
 	uint8_t index=0;
 	for(index=0; index<deviceNum; ++index){
-		if(0 == pGuidSrch[index].pos){
+		if(0 == pGuidSrch[index].bitPos){
 			break;
 		}
 	}
@@ -61,7 +61,7 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
         DS_ROM_SRCH_WRITE_BYTE(0xF0); 
         
         
-        for(bitCnt=1; bitCnt<=pGuidSrch[guidCnt].pos; ++bitCnt){
+        for(bitCnt=1; bitCnt<=pGuidSrch[guidCnt].bitPos; ++bitCnt){
 			readByte=DS_ROM_SRCH_READ2BITS(); // 2 read
             
             // write bits in pGuidSrch[guidCnt].guid.u64Bits from bit 0 to bit pGuidSrch[guidCnt].pos, that is bit[0, pos)            
@@ -75,11 +75,11 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
             }
 		}
 		
-        for( bitCnt=pGuidSrch[guidCnt].pos+1; bitCnt<=64; ++bitCnt){
+        for( bitCnt=pGuidSrch[guidCnt].bitPos+1; bitCnt<=64; ++bitCnt){
             readByte=DS_ROM_SRCH_READ2BITS(); // 2 bits read -> readByte 
             readByte &= 0x03;
 
-            pGuidSrch[guidCnt].pos=bitCnt;
+            pGuidSrch[guidCnt].bitPos=bitCnt;
             switch(readByte){
             case 0x00:  //conflict bit
                 index=DS_FindAnUnusedGuid(pGuidSrch, DS_DEVICE_NUM);
@@ -94,7 +94,7 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
 
 
                 ++devCnt;
-                DS_ROM_SRCH_PRINT("%s, %2u: 00---index:%d  pos:%d\r\n",__func__,bitCnt,index,pGuidSrch[guidCnt].pos);
+                DS_ROM_SRCH_PRINT("%s, %2u: 00---index:%d  pos:%d\r\n",__func__,bitCnt,index,pGuidSrch[guidCnt].bitPos);
                 DS_ROM_SRCH_PRINT("%s, %2u: 00\r\n",__func__,bitCnt);
                 break;	
             case 0x01:  //all are zero
@@ -105,8 +105,6 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
                 DS_ROM_SRCH_PRINT("%s, %2u: 01\r\n",__func__,bitCnt);
                 break;	
             case 0x02:  //all are one
-                pGuidSrch[guidCnt].guid.u64Bits |= ((uint64_t)1<<(bitCnt-1) );
-
                 pGuidSrch[guidCnt].guid.u64Bits |= ((uint64_t)1<<(bitCnt-1) );
 
                 DS_ROM_SRCH_WRITE_BIT( 1 ); // 1 bits write 1
@@ -127,7 +125,8 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
             
         }
     }
-   // DS_ROM_SRCH_PRINT("%s, ROM_GUID[0]: %#X , pos:%d \r\n",__func__, pGuidSrch[0].guid.u64Bits, pGuidSrch[0].pos);
+    
+    //DS_ROM_SRCH_PRINT("%s, ROM_GUID[0]: %#X \r\n",__func__, pGuidSrch[0].guid.u64Bits);
     
     for(index=0; index<devCnt; ++index){
         DS_ROM_SRCH_PRINT("%s, device %u ROM_GUID: ",__func__,index);

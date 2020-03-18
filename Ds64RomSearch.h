@@ -24,7 +24,6 @@
 
 
 typedef struct _GuidSearchTypdef{
-    uint8_t bitPos;
     union{
         uint64_t u64Bits;
         uint8_t  bytes[8];

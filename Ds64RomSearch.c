@@ -25,14 +25,14 @@ volatile GuidSearchTypdef DsGuid[DS_DEVICE_NUM]={0};
 //    return index;
 //}
 
-int16_t DS_FindAnUnusedGuid(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
+int16_t DS_FindAnUnusedGuid(uint8_t bitPosArr[], uint8_t deviceNum)
 {
-	if(NULL == pGuidSrch || 0 == deviceNum){
+	if(NULL == bitPosArr || 0 == deviceNum){
 		return -1;
 	}
 	uint8_t index=0;
 	for(index=0; index<deviceNum; ++index){
-		if(0 == pGuidSrch[index].bitPos){
+		if(0 == bitPosArr[index]){
 			break;
 		}
 	}
@@ -45,11 +45,13 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
     if(NULL==pGuidSrch || 0==deviceNum){
         return -1;
     }
+	uint8_t bitPosArr[deviceNum];
     int8_t  bitCnt=0,guidCnt=0;
     uint8_t readByte=0;
     uint8_t devCnt=1,lastDevCnt=0;
     int16_t index=0;
 
+    memset(bitPosArr, 0, sizeof(bitPosArr) );
     
     for(guidCnt=0; guidCnt<deviceNum && lastDevCnt<devCnt; ++guidCnt){
         DS_ROM_SRCH_PRINT("%s, guidCnt %u\r\n",__func__,guidCnt);
@@ -61,7 +63,7 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
         DS_ROM_SRCH_WRITE_BYTE(0xF0); 
         
         
-        for(bitCnt=1; bitCnt<=pGuidSrch[guidCnt].bitPos; ++bitCnt){
+        for(bitCnt=1; bitCnt<=bitPosArr[guidCnt]; ++bitCnt){
 			readByte=DS_ROM_SRCH_READ2BITS(); // 2 read
             
             // write bits in pGuidSrch[guidCnt].guid.u64Bits from bit 0 to bit pGuidSrch[guidCnt].pos, that is bit[0, pos)            
@@ -75,17 +77,18 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
             }
 		}
 		
-        for( bitCnt=pGuidSrch[guidCnt].bitPos+1; bitCnt<=64; ++bitCnt){
+        for( bitCnt=bitPosArr[guidCnt]+1; bitCnt<=64; ++bitCnt){
             readByte=DS_ROM_SRCH_READ2BITS(); // 2 bits read -> readByte 
             readByte &= 0x03;
 
-            pGuidSrch[guidCnt].bitPos=bitCnt;
+            bitPosArr[guidCnt]=bitCnt;
             switch(readByte){
             case 0x00:  //conflict bit
-                index=DS_FindAnUnusedGuid(pGuidSrch, DS_DEVICE_NUM);
+                index=DS_FindAnUnusedGuid(bitPosArr, DS_DEVICE_NUM);
                 if(0 > index){
                     return -2;
                 }
+                bitPosArr[index]=bitPosArr[guidCnt];
                 pGuidSrch[index]=pGuidSrch[guidCnt];
                 pGuidSrch[guidCnt].guid.u64Bits &= ~ ((uint64_t)1<<(bitCnt-1) );
                 pGuidSrch[index].guid.u64Bits   |=   ((uint64_t)1<<(bitCnt-1) );
@@ -94,7 +97,7 @@ int16_t Ds_RomSearch(GuidSearchTypdef pGuidSrch[], uint8_t deviceNum)
 
 
                 ++devCnt;
-                DS_ROM_SRCH_PRINT("%s, %2u: 00---index:%d  pos:%d\r\n",__func__,bitCnt,index,pGuidSrch[guidCnt].bitPos);
+                DS_ROM_SRCH_PRINT("%s, %2u: 00---index:%d  pos:%d\r\n",__func__,bitCnt,index,bitPosArr[guidCnt]);
                 DS_ROM_SRCH_PRINT("%s, %2u: 00\r\n",__func__,bitCnt);
                 break;	
             case 0x01:  //all are zero
